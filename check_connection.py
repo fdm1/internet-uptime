@@ -10,7 +10,7 @@ HEADERS = ["timestamp", "router_connected", "external_connected"]
 
 def check_ping(hostname):
     response = os.system("ping -c 1 " + hostname)
-    return response == 0
+    return 1 if response == 0 else 0
 
 def create_data_file_if_not_exists():
     if not os.path.exists(DATA_FILE):
