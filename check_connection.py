@@ -1,36 +1,42 @@
 from datetime import datetime
-import csv
+from dotenv import load_dotenv
+from influxdb import InfluxDBClient
 import os
 
-ROUTER_HOST = '192.168.0.1'
-EXTERNAL_HOST = 'google.com'
-DATA_FILE = 'data.csv'
-HEADERS = ["timestamp", "router_connected", "external_connected"]
+load_dotenv()
 
+def get_influx_client():
+    return InfluxDBClient(
+        os.environ.get("INFLUXDB_HOST"),
+        int(os.environ.get("INFLUXDB_PORT")),
+        os.environ.get("INFLUXDB_USER"),
+        os.environ.get("INFLUXDB_PASSWORD"),
+        os.environ.get("INFLUXDB_DATABASE"),
+    )
+
+def get_influx_payload():
+    return [
+        {
+            "measurement": "router_connected",
+            "fields": {
+                "value": check_ping(os.environ.get("ROUTER_HOST"))
+            }
+        },
+        {
+            "measurement": "external_connected",
+            "fields": {
+                "value": check_ping(os.environ.get("EXTERNAL_HOST"))
+            }
+        }
+    ]
 
 def check_ping(hostname):
     response = os.system("ping -c 1 " + hostname)
     return 1 if response == 0 else 0
 
-def create_data_file_if_not_exists():
-    if not os.path.exists(DATA_FILE):
-        with open(DATA_FILE, "w") as csvfile:
-            writer = csv.writer(csvfile)
-            writer.writerow(HEADERS)
-
 def log_connection():
-    row = [
-        datetime.now().isoformat(),
-        check_ping(ROUTER_HOST),
-        check_ping(EXTERNAL_HOST)
-    ]
-
-    with open(DATA_FILE, "a") as csvfile:
-        writer = csv.writer(csvfile)
-        writer.writerow(row)
+    get_influx_client().write_points(get_influx_payload())
 
 
 if __name__ == '__main__':
-    create_data_file_if_not_exists()
     log_connection()
-
